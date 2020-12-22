@@ -1,0 +1,333 @@
+---
+title: "Supplementary materials of 'Category clustering and morphological learning': Analysis of the earlier experiment"
+author: "John Mansfield, Carmen Saldana, Peter Hurst, Rachel Nordlinger, Sabine Stoll, Balthasar Bickel & Andrew Perfors"
+date: "Last build: `r Sys.Date()`"
+output:
+  html_document: 
+    number_sections: true
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(ggplot2)
+library(brms)
+options(mc.cores = parallel::detectCores())
+library(tidyr)
+library(HDInterval)
+library(ggridges)
+library(viridis)
+library(viridisLite)
+library(ggpubr)
+library(forcats)
+
+se <- function(x) sqrt(var(x)/length(x))
+pd <- position_dodge(0.8)
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+```
+
+
+```{r get data, echo=FALSE}
+cat.clust.resp <- read.table("catclust-responses-exp1.txt", header=TRUE, sep="\t", quote="")
+cat.clust.resp$Cond <- factor(cat.clust.resp$Cond, levels = c("Simple", "Complex", "Random"))
+```
+
+
+NB The experimental conditions are here labelled:
+
+- Simple: perfectly clustered grammar, all values within a feature appear in the same templatic position
+- Complex: unclustered, values for the same feature have different postions in the template but their position is - conditioned and thus perfectly predictable
+- Random: affixes have no fixed position,each presentation of a word randomly selects affix order
+
+# Data visulatisation
+
+## Overall accuracy
+
+### All tests
+
+```{r cond_2, echo=FALSE, message=FALSE, warning = FALSE, fig.height=4, fig.width=6}
+
+condition_overall <- cat.clust.resp %>% group_by(Cond, Username) %>% summarise(propCorrect = mean(Result))
+mean.prop_overall <- cat.clust.resp %>% group_by(Cond) %>% summarise(propCorrect = mean(Result), se=se(Result))
+
+plot_prop_overall<- ggplot(condition_overall, aes(x = Cond, y = propCorrect, fill= Cond)) + geom_dotplot(binaxis = 'y',stackdir = 'center',aes(color=Cond), dotsize=0.4, alpha=0.4)+labs(y='Proportion of correct responses\n', x = '\n')+ geom_errorbar(mapping=aes(ymin=propCorrect-se, ymax=propCorrect+se), size = 0.7, width=.1, alpha=1, data=mean.prop_overall)+geom_point(shape=21,size=2, alpha=1, data=mean.prop_overall, mapping=aes(y=propCorrect, x=Cond), stroke=1)+theme_minimal(base_size = 16)+scale_color_viridis(discrete = TRUE, option = "D")+scale_fill_viridis(discrete = TRUE, option = "D")+theme(legend.position="none")+ylim(0,1)
+
+plot_prop_overall
+```
+
+### Overall accuracy by test type (suffix versus stem trials)
+
+```{r test_type, echo=FALSE, message=FALSE, warning = FALSE, fig.height=4, fig.width=7}
+cat.clust.resp$Test.type <- rep(NA, nrow(cat.clust.resp))
+cat.clust.resp$Test.type[cat.clust.resp$Distractors.stem==0] <- "Stem"
+cat.clust.resp$Test.type[cat.clust.resp$Distractors.stem>0] <- "Suffix"
+
+type_test <- cat.clust.resp %>% group_by(Cond, Test.type, Username) %>% summarise(propCorrect = mean(Result))
+
+mean.type_test <- cat.clust.resp %>% group_by(Cond, Test.type) %>% summarise(propCorrect = mean(Result), se=se(Result))
+
+#labels_type <- c("FALSE" = "Seen items", "TRUE" = "Unseen items")
+
+plot_prop_type_test<- ggplot(type_test, aes(x = Cond, y = propCorrect,fill=Cond)) + geom_dotplot(binaxis = 'y',stackdir = 'center',aes(color=Cond), dotsize=0.4, alpha=0.4)+labs(y='Proportion of correct responses\n', x = '\n')+ geom_errorbar(mapping=aes(ymin=propCorrect-se, ymax=propCorrect+se), size = 0.7, width=.1, alpha=1, data=mean.type_test)+geom_point(shape=21,size=2, alpha=1, data=mean.type_test, mapping=aes(y=propCorrect, x=Cond), stroke=1)+theme_minimal(base_size = 16)+scale_color_viridis(discrete = TRUE, option = "D", name="Grammar")+scale_fill_viridis(discrete = TRUE, option = "D", name="Grammar")+ylim(0,1)+facet_grid(.~Test.type)+theme( axis.text.x = element_blank())
+
+viridis_3_rev<-c( "#FDE725FF", "#1F968BFF", "#440154FF")
+type_test$Cond <- factor(type_test$Cond, levels = c("Random", "Complex", "Simple"))
+plot_prop_type_test.byTest<- ggplot(type_test, aes(x = Test.type, y = propCorrect,fill=Cond)) + geom_dotplot(binaxis = 'y',stackdir = 'center',aes(color=Cond), dotsize=0.4, alpha=0.4)+labs(y='Proportion of correct responses\n', x = '\n')+ geom_errorbar(mapping=aes(ymin=propCorrect-se, ymax=propCorrect+se), size = 0.7, width=.1, alpha=1, data=mean.type_test)+geom_point(shape=21,size=2, alpha=1, data=mean.type_test, mapping=aes(y=propCorrect, x=Test.type), stroke=1)+theme_minimal(base_size = 18)+scale_color_manual(values = viridis_3_rev)+scale_fill_manual(values = viridis_3_rev)+ylim(0,1)+facet_grid(.~Cond)+theme( legend.position = "none")
+
+plot_prop_type_test
+
+```
+
+
+## Accuracy by block
+
+```{r blocks_3, echo=FALSE, message=FALSE, warning = FALSE}
+cat.clust.resp.suff.seen<-subset(cat.clust.resp, Unseen==FALSE)
+
+cat.clust.resp.suff.unseen<-subset(cat.clust.resp, Unseen==TRUE)
+
+testblock.seen <- cat.clust.resp.suff.seen %>% group_by(Cond, Block, Unseen) %>% summarise(propCorrect = mean(Result), se=se(Result))
+
+testblock.unseen <- cat.clust.resp.suff.unseen %>% group_by(Cond, Block, Unseen) %>% summarise(propCorrect = mean(Result), se=se(Result))
+
+plot_prop_by_block_mean.seen <- ggplot(testblock.seen, aes(x=Block-1, y=propCorrect, group=Cond, fill=Cond)) +geom_errorbar(mapping=aes(ymin=propCorrect-se, ymax=propCorrect+se), size = 0.7, width=.1, alpha=.8) + geom_line(aes(color=Cond)) + geom_point(shape=21, size = 2, stroke=1) + scale_y_continuous(limits = c(0, 1))+theme_minimal(base_size = 18)+scale_color_viridis(discrete = TRUE, option = "D", name="Grammar")+scale_fill_viridis(discrete = TRUE, option = "D", name="Grammar")+labs(y='proportion of correct responses\n', x = '\n test block')+guides(fill=guide_legend(title="condition"), color = guide_legend(title="condition"))+ scale_x_continuous(breaks=seq(0,2,1))
+
+plot_prop_by_block_mean.seen.unseen<-plot_prop_by_block_mean.seen+ geom_errorbar(data=testblock.unseen, mapping=aes(x = Block-1, ymin=propCorrect-se, ymax=propCorrect+se), size = 0.7, width=.3, alpha=.7,position=position_dodge(0.4))+geom_point(shape=21,size=2, data=testblock.unseen, mapping=aes(x = Block-1), position=position_dodge(0.4), stroke=1, alpha = 0.7)
+
+
+testblock.all<- cat.clust.resp %>% group_by(Cond, Block) %>% summarise(propCorrect = mean(Result), se=se(Result))
+testblock.all.raw<- cat.clust.resp %>% group_by(Cond, Block,Username) %>% summarise(propCorrect = mean(Result))
+
+cat.clust.resp.suff.3.seen<-subset(cat.clust.resp, Block==3 & Unseen ==FALSE)
+testblock.3.seen<- cat.clust.resp.suff.3.seen %>% group_by(Cond,Block,Unseen) %>% summarise(propCorrect = mean(Result), se=se(Result))
+
+cat.clust.resp.suff.3<-subset(cat.clust.resp, Block==3)
+testblock.3<- cat.clust.resp.suff.3 %>% group_by(Cond,Block,Unseen) %>% summarise(propCorrect = mean(Result), se=se(Result))
+
+plot_prop_by_block_mean <- ggplot(testblock.all, aes(x=Block, y=propCorrect, group=Cond, fill=Cond)) +geom_errorbar(mapping=aes(ymin=propCorrect-se, ymax=propCorrect+se), size = 0.7, width=.1, alpha=.8) + geom_line(aes(color=Cond)) + geom_point(shape=21, size = 2, stroke=1) + scale_y_continuous(limits = c(0,1))+theme_minimal(base_size = 18)+scale_color_viridis(discrete = TRUE, option = "D", name="Grammar")+scale_fill_viridis(discrete = TRUE, option = "D", name="Grammar")+labs(y='proportion of correct responses\n', x = '\n test block')+guides(fill=guide_legend(title="condition"), color = guide_legend(title="condition"))+ scale_x_continuous(breaks=seq(1,3,1))
+
+plot_prop_by_block_mean.raw <- ggplot(testblock.all.raw, aes(x=Block, y=propCorrect))+ geom_count( aes(color=Cond,size = after_stat(n), group = Cond), position =pd, alpha=0.3)+scale_size(range = c(0,8), breaks=seq(0,30,by=5))+geom_line(data = testblock.all, mapping = aes(x=Block, y=propCorrect, group = Cond, color = Cond), position = pd)+ geom_errorbar(data= testblock.all, mapping=aes(ymin=propCorrect-se, ymax=propCorrect+se, group=Cond), position=pd, width=.8)+geom_point(shape=21,size=3, data=testblock.all, mapping=aes(y=propCorrect, x=Block, group=Cond, fill =Cond), position=pd, stroke=1) +theme_minimal(base_size = 18)+scale_color_viridis(discrete = TRUE, option = "D", name="Grammar")+scale_fill_viridis(discrete = TRUE, option = "D", name="Grammar")+labs(y='proportion of correct responses\n', x = '\n test block')+guides(fill=guide_legend(title="condition"), color = guide_legend(title="condition"))+ scale_x_continuous(breaks=seq(1,3,1))
+
+plot_prop_by_block_mean.all.seen.unseen<-plot_prop_by_block_mean.raw+geom_point(size=2, data=testblock.3, mapping=aes(x = Block, shape = Unseen, color =Cond,fill = Cond, group = Cond), position=position_dodge(1.2), stroke=1, alpha = 1)+scale_shape_manual(values = c(24,25))+guides( shape = guide_legend(title="novel item"))
+
+plot_prop_by_block_mean.all.seen.unseen
+```
+
+## Accuracy as a function of the number of training trials 
+```{r trainingViews, echo=FALSE, message=FALSE, warning = FALSE}
+
+cat.clust.resp.trainingViews.raw <- cat.clust.resp  %>% group_by(Cond, Target.training.views, Username) %>% summarise(propCorrect = mean(Result))
+
+
+cat.clust.resp.trainingViews <- cat.clust.resp %>% group_by(Cond, Target.training.views) %>% summarise(propCorrect = mean(Result), se=se(Result))
+
+
+plot_prop_by_trainingViews <- ggplot(cat.clust.resp.trainingViews, aes(x=factor(Target.training.views), y=propCorrect, group=Cond, fill=Cond)) +geom_errorbar(mapping=aes(ymin=propCorrect-se, ymax=propCorrect+se), size = 0.7, width=.1, alpha=.8) + geom_line(aes(color=Cond)) + geom_point(shape=21, size = 2, stroke=1) + scale_y_continuous(limits = c(0, 1))+theme_minimal(base_size = 18)+scale_color_viridis(discrete = TRUE, option = "D", name="Grammar")+scale_fill_viridis(discrete = TRUE, option = "D", name="Grammar")+labs(y='Proportion of correct responses\n', x = '\n Number of training views')+guides(fill=guide_legend(title="condition"), color = guide_legend(title="condition"))
+
+plot_prop_by_trainingViews.raw<- ggplot(cat.clust.resp.trainingViews.raw, aes(x=factor(Target.training.views), y= propCorrect))+ geom_count( aes(color=Cond,size = after_stat(n), group = Cond), position =pd, alpha=0.3)+scale_size(range = c(0,8), breaks=seq(0,30,by=5))+geom_line(data = cat.clust.resp.trainingViews, mapping = aes(x=factor(Target.training.views), y=propCorrect, group = Cond, color = Cond), position = pd)+ geom_errorbar(data=cat.clust.resp.trainingViews , mapping=aes(ymin=propCorrect-se, ymax=propCorrect+se, group=Cond), position=pd, width=.8)+geom_point(shape=21,size=3, data=cat.clust.resp.trainingViews , mapping=aes(y=propCorrect, x=factor(Target.training.views), group=Cond, fill =Cond), position=pd, stroke=1)+theme_minimal(base_size = 18)+scale_color_viridis(discrete = TRUE, option = "D", name="Grammar")+scale_fill_viridis(discrete = TRUE, option = "D", name="Grammar")+labs(y='Proportion of correct responses\n', x = '\n Number of training views')+guides(fill=guide_legend(title="condition"), color = guide_legend(title="condition")) 
+
+plot_prop_by_trainingViews.raw
+```
+
+# Statistical analysis
+
+```{r function to run models, echo=FALSE}
+
+### this function checks if the model under the path given already exists, if it does, it just opens the saved model if it doesn, it allows the model to run and saves it witht he path name given ###
+
+run_model <- function(expr, path, reuse = TRUE) {
+  path <- paste0(path, ".Rds")
+  if (reuse) {
+    fit <- suppressWarnings(try(readRDS(path), silent = TRUE))
+  }
+  if (is(fit, "try-error")) {
+    fit <- eval(expr)
+    saveRDS(fit, file = path)
+  }
+  fit
+}
+```
+
+```{r model data, echo=FALSE, warning = FALSE, message=FALSE}
+### aggregate all factors of interest ###
+cat.clust.resp$Views<-cat.clust.resp$Target.training.views
+
+cc.agr <- cat.clust.resp %>% group_by(Cond, Views, Block, Test.type, Username) %>% summarise(k = sum(Result), n=length(Result))
+
+cc.agr$Block <- as.numeric(cc.agr$Block)-1
+
+### here create a data frame with different order of levels for condition ###
+cc.agr.helmert <-cc.agr
+cc.agr.helmert$Cond<-fct_relevel(cc.agr.helmert$Cond, "Random","Complex","Simple")
+```
+
+
+```{r Solomon Kurz custom beta binomial family,  echo =FALSE, warning=FALSE, message=FALSE }
+
+### brms does not support beta binomial, so we are using the one created by Solom Kurz which is the same as the one by Paul tbh ###
+
+beta_binomial2 <-
+  custom_family(
+    "beta_binomial2", dpars = c("mu", "phi"),
+    links = c("logit", "log"), lb = c(NA, 0),
+    type = "int", vars = "trials[n]"
+  )
+
+stan_funs <- "
+  real beta_binomial2_lpmf(int y, real mu, real phi, int T) {
+    return beta_binomial_lpmf(y | T, mu * phi, (1 - mu) * phi);
+  }
+  int beta_binomial2_rng(real mu, real phi, int T) {
+    return beta_binomial_rng(T, mu * phi, (1 - mu) * phi);
+  }
+"
+
+stanvars <- stanvar(scode = stan_funs, block = "functions")
+```
+
+## Priors
+
+```{r beta binomial priors, eval = FALSE, warning = FALSE, message=FALSE}
+beta_Prior <- c(
+    set_prior("student_t(6, 0, 1.5)", class = "Intercept"),
+    set_prior("student_t(6, 0, 1.5)", class = "b"),
+    set_prior("cauchy(0, 10)", class = "sd"),
+    set_prior("exponential(1)", class = "phi")
+)
+
+```
+
+## Model
+```{r model beta binomial,  warning=FALSE, message=FALSE }
+### establish herlmet contrast for categorical factors
+options(contrasts = c("contr.helmert", "contr.poly"))
+
+
+### run model if it is not already saved, if it is saved, just open the saved model under the path given as the last argument to the run_model() function. In this case it should be saved in the same directory to avoid re-running it, it takes a while. 
+
+model.Exp1.catclust.views.helmert.beta.noRS<- run_model(
+        brm(formula = k | trials(n) ~ Cond + Views + Test.type + Block + (Cond:Views) + (Cond:Block) + (Cond:Test.type) + (1|Username),
+             data=cc.agr.helmert,
+             family = beta_binomial2,
+             prior = beta_Prior,
+             sample_prior = TRUE,
+             warmup = 1000,
+             iter = 10000,
+             control = list(adapt_delta = 0.95),
+             init_r = 0.1,
+             chains = 4,
+             cores= 4,
+             seed = 11,
+             stanvars = stanvars, 
+             save_all_pars =TRUE),
+        paste0(getwd(),"/model.Exp1.catclust.views.helmert.beta.testType.1e4.noRS"))
+```
+
+```{r  beta binomial plot, echo=FALSE,  warning=FALSE, message=FALSE }
+
+### I am creating some custom plots in this block to show the histogram with the overlapped point estimates and the credible intervals ###
+
+lower.ci.catclust.beta<-data.frame(Parameter=c("Intercept", "Complex vs Random",  "Simple vs Complex & Random", "Views", "Suffix vs stem test","Block", "Views \n (Complex vs Random)",  "Views \n (Simple vs Complex & Random)",  "Block \n (Complex vs Random)", "Block \n (Simple vs Complex & Random)", "Suffix vs stem \n (Complex vs Random)", "Suffix vs stem \n (Simple vs Complex & Random)"), ci = c(as.numeric(summary(model.Exp1.catclust.views.helmert.beta.noRS)$fixed[,3])))
+
+upper.ci.catclust.beta<-data.frame(Parameter=c("Intercept", "Complex vs Random",  "Simple vs Complex & Random", "Views", "Suffix vs stem test","Block", "Views \n (Complex vs Random)",  "Views \n (Simple vs Complex & Random)",  "Block \n (Complex vs Random)", "Block \n (Simple vs Complex & Random)", "Suffix vs stem \n (Complex vs Random)", "Suffix vs stem \n (Simple vs Complex & Random)"), ci = c(as.numeric(summary(model.Exp1.catclust.views.helmert.beta.noRS)$fixed[,4])))
+
+estimates.catclust.beta<-data.frame(Parameter=c("Intercept", "Complex vs Random",  "Simple vs Complex & Random", "Views", "Suffix vs stem test","Block", "Views \n (Complex vs Random)",  "Views \n (Simple vs Complex & Random)",  "Block \n (Complex vs Random)", "Block \n (Simple vs Complex & Random)", "Suffix vs stem \n (Complex vs Random)", "Suffix vs stem \n (Simple vs Complex & Random)"), est = c(as.numeric(summary(model.Exp1.catclust.views.helmert.beta.noRS)$fixed[,1])))
+
+plot.catclust.model.fixed <-stanplot(model.Exp1.catclust.views.helmert.beta.noRS, type = "hist", pars = "^b.*")+geom_vline(xintercept = 0, color = "darkorange2", size = 0.7, alpha = 0.8)+theme_bw()+ theme(strip.background = element_blank())+geom_vline(data=lower.ci.catclust.beta,aes(xintercept=ci),  linetype='dashed',size=0.7,alpha=0.3)+geom_vline(data=upper.ci.catclust.beta,aes(xintercept=ci), linetype='dashed',size=0.7,alpha=0.3)+geom_vline(data=estimates.catclust.beta,aes(xintercept=est), size=0.7,alpha=0.6)
+
+plot.catclust.model.fixed$data$Parameter<-recode_factor(plot.catclust.model.fixed$data$Parameter, "b_Intercept" = "Intercept", "b_Cond1" = "Complex vs Random", "b_Cond2" = "Simple vs Complex & Random", "b_Views" = "Views","b_Test.type1" = "Suffix vs stem test", "b_Block"="Block", "b_Cond1:Views" = "Views \n (Complex vs Random)", "b_Cond2:Views" = "Views \n (Simple vs Complex & Random)", "b_Cond1:Block" = "Block \n (Complex vs Random)", "b_Cond2:Block" = "Block \n (Simple vs Complex & Random)", "b_Cond1:Test.type1" = "Suffix vs stem \n (Complex vs Random)", "b_Cond2:Test.type1" = "Suffix vs stem \n (Simple vs Complex & Random)")
+```
+
+```{r bayesian model diagnostics beta requirements,  echo=FALSE,  warning=FALSE, message=FALSE}
+# This is code setting the functions and ground to run the model diagnostics
+
+### we need this to make be able to run the functions to diagnose the model. This is a built in fucntion in brms which exports user-defined Stan functions form the model and optionally vectorizes them ###
+expose_functions(model.Exp1.catclust.views.helmert.beta.noRS, vectorize = TRUE)
+
+### custom functions to run beta mdoel diagnostics ###
+log_lik_beta_binomial2 <- function(i, draws) {
+mu <- draws$dpars$mu[, i]
+phi <- draws$dpars$phi
+trials <- draws$data$trials[i]
+y <- draws$data$Y[i]
+beta_binomial2_lpmf(y, mu, phi, trials)
+}
+
+predict_beta_binomial2 <- function(i, draws, ...) {
+mu <- draws$dpars$mu[, i]
+phi <- draws$dpars$phi
+trials <- draws$data$trials[i]
+beta_binomial2_rng(mu, phi, trials)
+}
+
+fitted_beta_binomial2 <- function(draws) {
+mu <- draws$dpars$mu
+trials <- draws$data$trials
+trials <- matrix(trials, nrow = nrow(mu), ncol = ncol(mu), byrow = TRUE)
+mu * trials
+}
+```
+
+```{r bayesian model diagnostics beta,  echo=FALSE,  warning=FALSE, message=FALSE}
+### This is code to run several diagnostics for the model
+
+### set colors for the plot ###
+viridis_3_rev<-c("#440154FF", "#1F968BFF", "#FDE725FF")
+
+### evidence for hypotheses (one sided), i.e., we report posterior probabilities and their CIs when necessary. The posterior probabilities are the percentage of samples of the posterior in accordance with the hypothesis ###
+ht<-hypothesis(model.Exp1.catclust.views.helmert.beta.noRS, c("Cond1 > 0", "Cond2 > 0", "Views > 0", "Test.type1 < 0", "Cond1:Views > 0", "Cond2:Views > 0", "Block > 0", "Cond1:Block > 0", "Cond2:Block > 0", "Cond1:Test.type1 > 0", "Cond2:Test.type1 > 0"))
+
+
+### predictive check: a good model fit would have the thich line y within the simulated samples yrep ###
+plot.pp.catclust.beta<-pp_check(model.Exp1.catclust.views.helmert.beta.noRS, nsamples =  1e3, type = 'bars')+theme_minimal(base_size = 18)+labs(y="Frequency \n", x ="\n Number of correct responses \n(subset by block and number of training views)")
+
+### plot showing the fits of the point estimates and CIs for the fixed effects ###
+ma.catclust.beta<-marginal_effects(model.Exp1.catclust.views.helmert.beta.noRS, new_objects = list(trials = 1))
+
+### plot of cond*Views model fit ###
+pred.fit.Views.beta<-plot(ma.catclust.beta, plot = FALSE)[[5]]+theme_bw()+scale_color_viridis(discrete = TRUE, option = "D",direction = -1)+scale_fill_viridis(discrete = TRUE, option = "D", direction = -1)+theme_minimal(base_size = 18)
+
+fit.mod.fixeff.viz.Views<-ggarrange(plot_prop_by_trainingViews.raw+labs(y="proportion of correct responses \n",  x ="", title = "Experimental results" )+theme( plot.title=element_text(size=14)),pred.fit.Views.beta+ylim(0,1)+theme(legend.position = "none", plot.title=element_text(size=14))+labs(y="",  x ="", title = "Model fit" ), legend = "right", common.legend = TRUE, widths = c(1.1,1))
+
+combo.results.views<-annotate_figure(fit.mod.fixeff.viz.Views, bottom = text_grob("\n number of training views \n", size = 18, hjust = 0.6, vjust= -0.1))
+
+### plot of cond*Block model fit ###
+pred.fit.Block.beta<-plot(ma.catclust.beta, plot = FALSE)[[6]]+theme_bw()+scale_color_viridis(discrete = TRUE, option = "D",direction = -1)+scale_fill_viridis(discrete = TRUE, option = "D", direction = -1)+theme_minimal(base_size = 18)+ scale_x_continuous(breaks=seq(0,2,1),labels = c("1","2","3"))
+
+### plot combining empirical data with model fit ###
+fit.mod.fixeff.viz.Block<-ggarrange(plot_prop_by_block_mean.all.seen.unseen+labs(y="proportion of correct responses \n",  x ="", title = "Experimental results" )+theme( plot.title=element_text(size=14)),pred.fit.Block.beta+ylim(0,1)+theme(legend.position = "none", plot.title=element_text(size=14))+labs(y="",  x ="", title = "Model fit" ), legend = "right", common.legend = TRUE, widths = c(1.1,1))
+
+combo.results.block<-annotate_figure(fit.mod.fixeff.viz.Block, bottom = text_grob("\n block \n", size = 18, hjust = 0.6, vjust= -0.1))
+
+### plot of cond*test model fit ###
+pred.fit.Test.beta<-plot(ma.catclust.beta, plot = FALSE)[[7]]+theme_bw()+scale_color_manual(values = c("chocolate1","firebrick"))+scale_fill_manual(values = c("chocolate1","firebrick"))+theme_minimal(base_size = 18)
+
+### plot combining empirical data with model fit ###
+fit.mod.fixeff.viz.Test<-ggarrange(plot_prop_type_test.byTest+labs(y="Experimental results \n",  x ="")+theme( axis.title=element_text(size=16)),pred.fit.Test.beta+ylim(0,1)+theme(legend.position = "none", axis.title=element_text(size=16))+labs(y="Model fit \n",  x ="" ),  nrow =2)
+
+combo.results.Test<-annotate_figure(fit.mod.fixeff.viz.Test, left = text_grob("\n proportion of correct responses \n", size = 18,  rot =90))
+
+```
+
+## Results
+
+### Posterior distribution densities for fixed effects
+```{r plot estimates beta,echo=FALSE,  warning=FALSE, message=FALSE}
+plot.catclust.model.fixed
+```
+
+### Plots of experimental data and their respective model fits (by View, by Block and by test type)
+```{r plot results and model prediction beta, echo=FALSE,  warning=FALSE, message=FALSE, fig.height=6, fig.width=10,fig.cap=""}
+combo.results.views
+combo.results.block
+combo.results.Test
+```
+
+### Model predictive checks
+```{r plot model deiagnostics beta, echo=FALSE,  warning=FALSE, message=FALSE}
+plot.pp.catclust.beta
+```
+
