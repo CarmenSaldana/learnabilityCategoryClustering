@@ -44,7 +44,7 @@ NB The experimental conditions are here labelled:
 
 <!-- ## Response time -->
 
-<!-- We pre-registered to exclude participants with mean RT < 4000, and this seems to have been a pretty good point to choose. -->
+<!-- We pre-registered to exclude participants with mean RT < 4000 -->
 
 ```{r rt, echo=FALSE, message=FALSE, warning = FALSE}
 #Check relationship of response time to response accuracy.
@@ -216,7 +216,7 @@ stanvars <- stanvar(scode = stan_funs, block = "functions")
 
 ### Priors
 
-```{r beta binomial priors, eval = FALSE, warning = FALSE, message=FALSE}
+```{r beta binomial priors, warning = FALSE, message=FALSE}
 beta_Prior <- c(
     set_prior("student_t(6, 0, 1.5)", class = "Intercept"),
     set_prior("student_t(6, 0, 1.5)", class = "b"),
@@ -377,7 +377,7 @@ An anonymised version of the pre-registered design and analysis plan is accessib
 
 ### Priors
 
-```{r binomial priors, eval = FALSE, warning = FALSE, message=FALSE}
+```{r binomial priors, warning = FALSE, message=FALSE}
 Prior <- c(
     set_prior("student_t(6, 0, 1.5)", class = "Intercept"),
     set_prior("student_t(6, 0, 1.5)", class = "b"),
