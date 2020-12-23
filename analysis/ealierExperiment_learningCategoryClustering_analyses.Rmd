@@ -190,7 +190,7 @@ stanvars <- stanvar(scode = stan_funs, block = "functions")
 
 ## Priors
 
-```{r beta binomial priors, eval = FALSE, warning = FALSE, message=FALSE}
+```{r beta binomial priors, warning = FALSE, message=FALSE}
 beta_Prior <- c(
     set_prior("student_t(6, 0, 1.5)", class = "Intercept"),
     set_prior("student_t(6, 0, 1.5)", class = "b"),
@@ -281,7 +281,7 @@ viridis_3_rev<-c("#440154FF", "#1F968BFF", "#FDE725FF")
 ht<-hypothesis(model.Exp1.catclust.views.helmert.beta.noRS, c("Cond1 > 0", "Cond2 > 0", "Views > 0", "Test.type1 < 0", "Cond1:Views > 0", "Cond2:Views > 0", "Block > 0", "Cond1:Block > 0", "Cond2:Block > 0", "Cond1:Test.type1 > 0", "Cond2:Test.type1 > 0"))
 
 
-### predictive check: a good model fit would have the thich line y within the simulated samples yrep ###
+### predictive check: a good model fit would have the thick line y within the simulated samples yrep ###
 plot.pp.catclust.beta<-pp_check(model.Exp1.catclust.views.helmert.beta.noRS, nsamples =  1e3, type = 'bars')+theme_minimal(base_size = 18)+labs(y="Frequency \n", x ="\n Number of correct responses \n(subset by block and number of training views)")
 
 ### plot showing the fits of the point estimates and CIs for the fixed effects ###
