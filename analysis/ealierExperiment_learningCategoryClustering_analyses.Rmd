@@ -31,7 +31,9 @@ pd <- position_dodge(0.8)
 
 
 ```{r get data, echo=FALSE}
-cat.clust.resp <- read.table("catclust-responses-exp1.txt", header=TRUE, sep="\t", quote="")
+cat.clust.resp <- read.csv("catclust-responses-exp1-anon.csv")
+cat.clust.resp$Username<-factor(cat.clust.resp$Username)
+
 cat.clust.resp$Cond <- factor(cat.clust.resp$Cond, levels = c("Simple", "Complex", "Random"))
 ```
 

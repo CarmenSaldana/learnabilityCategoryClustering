@@ -26,12 +26,13 @@ library(forcats)
 se <- function(x) sqrt(var(x)/length(x))
 pd <- position_dodge(0.8)
 '%!in%' <- function(x,y)!('%in%'(x,y))
-
 ```
 
 
 ```{r get data, echo=FALSE}
-cat.clust.resp <- read.table("catclust-responses-exp2.txt", header=TRUE, sep="\t", quote="")
+cat.clust.resp <- read.csv("catclust-responses-exp2-anon.csv")
+cat.clust.resp$Username<-factor(cat.clust.resp$Username)
+
 cat.clust.resp$Cond <- factor(cat.clust.resp$Cond, levels = c("Simple", "Complex", "Random"))
 ```
 
